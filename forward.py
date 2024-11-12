@@ -10,8 +10,8 @@ import time
 import asyncio
 import logging
 
-# Configure logging (set level to WARNING to suppress INFO messages)
-logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Telegram API credentials
@@ -41,41 +41,46 @@ source_chat_peer = InputPeerChannel(source_chat_id, 0)
 @client.on(events.NewMessage)
 async def handler(event):
     global last_message_id
-    if event.message.id > last_message_id and event.chat_id == source_chat_peer.channel_id: 
-        try:
-            # Get the source chat entity
-            source_chat = await client.get_entity(event.message.peer_id)
+    try:
+        if event.message.id > last_message_id and event.chat_id == source_chat_peer.channel_id: 
+            try:
+                # Get the source chat entity
+                source_chat = await client.get_entity(event.message.peer_id)
             
-            # Forward to each target channel
-            for target_username in target_channel_usernames:
-                try:
-                    # Get the target channel entity
-                    target_channel = await client.get_input_entity(target_username)
+                # Forward to each target channel
+                for target_username in target_channel_usernames:
+                    try:
+                        # Get the target channel entity
+                        target_channel = await client.get_input_entity(target_username)
 
-                    # Forward the message
-                    await client.forward_messages(
-                        entity=target_channel,
-                        messages=event.message,
-                        from_peer=source_chat
-                    )
-                    # Only log successful forwards (INFO level)
-                    logger.info(f"Message forwarded to {target_username}") 
-                    last_message_id = event.message.id  # Update last_message_id AFTER success
-                    backoff_delay = 2  # Reset backoff delay on success
-                except PeerFloodError:
-                    logger.warning(f"Flood Error from {target_username}. Waiting {backoff_delay} seconds.")
-                    time.sleep(backoff_delay)
-                    backoff_delay *= 2  # Increase backoff delay
-                    if backoff_delay > max_backoff_delay:
-                        backoff_delay = max_backoff_delay
-                except UserPrivacyRestrictedError:
-                    logger.warning(f"Privacy restriction for {target_username}. Skipping.")
-                except Exception as e:
-                    logger.error(f'Error forwarding message to {target_username}: {e}')
-                    traceback.print_exc()
-        except Exception as e:
-            logger.error(f'Error getting source chat entity or forwarding message: {e}')
-            traceback.print_exc()
+                        # Forward the message
+                        await client.forward_messages(
+                            entity=target_channel,
+                            messages=event.message,
+                            from_peer=source_chat
+                        )
+                        logger.info(f"Message forwarded to {target_username}")
+                        last_message_id = event.message.id  # Update last_message_id AFTER success
+                        backoff_delay = 2  # Reset backoff delay on success
+                    except PeerFloodError:
+                        logger.warning(f"Getting Flood Error from {target_username}. \nWaiting {backoff_delay} seconds.")
+                        time.sleep(backoff_delay)
+                        backoff_delay *= 2  # Increase backoff delay
+                        if backoff_delay > max_backoff_delay:
+                            backoff_delay = max_backoff_delay
+                    except UserPrivacyRestrictedError:
+                        logger.info(f"The user's privacy settings do not allow you to do this. Skipping.")
+                    except Exception as e:
+                        logger.error(f'Error forwarding message to {target_username}: {e}')
+                        traceback.print_exc()
+            except Exception as e:
+                logger.error(f'Error getting source chat entity or forwarding message: {e}')
+                traceback.print_exc()
+
+    except AttributeError:
+        # Suppress the error (Don't print it to the terminal)
+        logger.debug("Encountered AttributeError: 'UpdateNewChannelMessage' object has no attribute 'chat_id'")
+        pass  # Skip to the next message
 
     # Add a delay to prevent rate limiting
     time.sleep(1)
