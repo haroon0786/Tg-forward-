@@ -8,6 +8,11 @@ import csv
 import traceback
 import time
 import asyncio
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Telegram API credentials
 api_id = '27353904'
@@ -19,9 +24,6 @@ source_chat_id = -1002210572103
 
 # List of target channel usernames (you can add more usernames)
 target_channel_usernames = ['gyyfj7'] 
-
-# Logging file
-log_file = "logs.txt"
 
 # Create a Telegram client
 client = TelegramClient('anon', api_id, api_hash)
@@ -56,23 +58,23 @@ async def handler(event):
                         messages=event.message,
                         from_peer=source_chat
                     )
-                    print(f"Message forwarded to {target_username}")
+                    logger.info(f"Message forwarded to {target_username}")
                     last_message_id = event.message.id  # Update last_message_id AFTER success
                     backoff_delay = 2  # Reset backoff delay on success
                 except PeerFloodError:
-                    print(f"Getting Flood Error from {target_username}. \nWaiting {backoff_delay} seconds.")
+                    logger.warning(f"Getting Flood Error from {target_username}. \nWaiting {backoff_delay} seconds.")
                     time.sleep(backoff_delay)
                     backoff_delay *= 2  # Increase backoff delay
                     if backoff_delay > max_backoff_delay:
                         backoff_delay = max_backoff_delay
                 except UserPrivacyRestrictedError:
-                    print(f"The user's privacy settings do not allow you to do this. Skipping.")
-                except:
+                    logger.info(f"The user's privacy settings do not allow you to do this. Skipping.")
+                except Exception as e:
+                    logger.error(f'Error forwarding message to {target_username}: {e}')
                     traceback.print_exc()
-                    print(f'Error forwarding message to {target_username}.')
-        except:
+        except Exception as e:
+            logger.error(f'Error getting source chat entity or forwarding message: {e}')
             traceback.print_exc()
-            print(f'Error getting source chat entity or forwarding message.')
 
     # Add a delay to prevent rate limiting
     time.sleep(1)
@@ -86,11 +88,11 @@ async def main():
 
     # Start the handler to listen for new messages
     client.add_event_handler(handler)
-    print('Listening for new messages in the source chat.')
+    logger.info('Listening for new messages in the source chat.')
 
     # Define a port and start the server
     port = int(os.environ.get("PORT", 5000))  # Get port from environment (default: 5000)
-    print(f"Server started on port {port}")
+    logger.info(f"Server started on port {port}")
     await client.run_until_disconnected()
 
 if __name__ == '__main__':
