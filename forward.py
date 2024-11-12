@@ -10,6 +10,10 @@ import time
 from aiohttp import web
 import asyncio
 
+# Redirect stdout and stderr to os.devnull to suppress terminal output
+sys.stdout = open(os.devnull, 'w')
+sys.stderr = open(os.devnull, 'w')
+
 # Telegram API credentials
 api_id = '27353904'
 api_hash = '99b31ff29dc195f52e7bb6b526b2e4ca'
@@ -54,23 +58,19 @@ async def handler(event):
                         messages=event.message,
                         from_peer=source_chat
                     )
-                    print(f"Message forwarded to {target_username}")
                     last_message_id = event.message.id  # Update last_message_id AFTER success
                     backoff_delay = 4  # Reset backoff delay on success
                 except PeerFloodError:
-                    print(f"Getting Flood Error from {target_username}. \nWaiting {backoff_delay} seconds.")
                     await asyncio.sleep(backoff_delay)
                     backoff_delay *= 4  # Increase backoff delay
                     if backoff_delay > max_backoff_delay:
                         backoff_delay = max_backoff_delay
                 except UserPrivacyRestrictedError:
-                    print(f"The user's privacy settings do not allow you to do this. Skipping.")
+                    pass
                 except:
                     traceback.print_exc()
-                    print(f'Error forwarding message to {target_username}.')
         except:
             traceback.print_exc()
-            print(f'Error getting source chat entity or forwarding message.')
 
     # Add a delay to prevent rate limiting
     await asyncio.sleep(1)
@@ -84,7 +84,6 @@ async def main():
 
     # Start the handler to listen for new messages
     client.add_event_handler(handler)
-    print('Listening for new messages in the source chat.')
 
     # Start the aiohttp server
     app = web.Application()
@@ -100,5 +99,4 @@ if __name__ == '__main__':
     try:
         client.loop.run_until_complete(main())
     except KeyboardInterrupt:
-        print("Exiting.")
-        
+        pass
