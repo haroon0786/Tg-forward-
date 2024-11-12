@@ -96,8 +96,8 @@ async def main():
     client.add_event_handler(handler)
     logger.info('Listening for new messages in the source chat.')
 
-    # Define a port and start the server
-    port = int(os.environ.get("PORT", 5000))  # Get port from environment (default: 5000)
+    # Define the port (hardcoded)
+    port = 5000  # Hardcode the port
     logger.info(f"Server started on port {port}")
     
     async def placeholder_server():
