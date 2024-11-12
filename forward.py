@@ -9,7 +9,6 @@ import traceback
 import time
 import asyncio
 import logging
-from flask import Flask, request
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -97,18 +96,17 @@ async def main():
     client.add_event_handler(handler)
     logger.info('Listening for new messages in the source chat.')
 
-    # Create Flask app
-    app = Flask(__name__)
-
-    # Flask route for the root path (health check)
-    @app.route('/')
-    def index():
-        return 'Telegram Forward Bot is running!'
-
     # Define a port and start the server
     port = int(os.environ.get("PORT", 5000))  # Get port from environment (default: 5000)
     logger.info(f"Server started on port {port}")
-    app.run(host='0.0.0.0', port=port, debug=False) # Note: Use debug=False in production
+    
+    async def placeholder_server():
+        server = await asyncio.start_server(lambda reader, writer: writer.close(), '0.0.0.0', port)
+        async with server:
+            await server.serve_forever()
+
+    # Run the Telegram client and the placeholder server concurrently
+    await asyncio.gather(client.run_until_disconnected(), placeholder_server())
 
 if __name__ == '__main__':
     asyncio.run(main())
