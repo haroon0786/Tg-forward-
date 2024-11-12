@@ -22,6 +22,13 @@ target_channel_usernames = ['gyyfj7', 'CHAT_KING01', 'RESELLER_COMMUNITY2', 'dss
 
 # Logging setup
 logging.basicConfig(filename='logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+error_logger = logging.getLogger('error_logger')
+error_logger.setLevel(logging.ERROR)
+error_handler = logging.FileHandler('error.txt')
+error_handler.setLevel(logging.ERROR)
+error_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+error_handler.setFormatter(error_formatter)
+error_logger.addHandler(error_handler)
 
 # Create a Telegram client
 client = TelegramClient('anon', api_id, api_hash)
@@ -68,13 +75,13 @@ async def handler(event):
                 except UserPrivacyRestrictedError:
                     logging.info(f"The user's privacy settings do not allow you to do this. Skipping.")
                 except (MessageIdInvalidError, UserBannedInChannelError):
-                    logging.error(f"Error forwarding to {target_username}: {traceback.format_exc()}")
+                    error_logger.error(f"Error forwarding to {target_username}: {traceback.format_exc()}")
                 except:
                     traceback.print_exc()
-                    logging.error(f'Error forwarding message to {target_username}.')
+                    error_logger.error(f'Error forwarding message to {target_username}.')
         except:
             traceback.print_exc()
-            logging.error(f'Error getting source chat entity or forwarding message.')
+            error_logger.error(f'Error getting source chat entity or forwarding message.')
 
     # Add a delay to prevent rate limiting
     time.sleep(1)
