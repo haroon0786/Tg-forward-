@@ -8,14 +8,15 @@ import csv
 import traceback
 import time
 import logging
+from flask import Flask, request
 
-# Telegram API credentials
-api_id = '27353904'
-api_hash = '99b31ff29dc195f52e7bb6b526b2e4ca'
-phone = '+919796487958'
+# Telegram API credentials (your personal account's details)
+api_id = 27353904  # Replace with your API ID
+api_hash = '99b31ff29dc195f52e7bb6b526b2e4ca'  # Replace with your API hash
+phone = '+919796487958'  # Replace with your phone number
 
 # Source chat ID
-source_chat_id = -1001859547091
+source_chat_id = -1001859547091  # Replace with the ID of the source channel
 
 # List of target channel usernames (you can add more usernames)
 target_channel_usernames = ['gyyfj7', 'CHAT_KING01', 'RESELLER_COMMUNITY2', 'dsstorechatgroup', 'bgmi_dva', 'flexopresellinghub', 'BGMIRESELLERSCOMMUNITY', 'rudraxchats', 'BGMI_Official_Chat_Group', 'BGMIRESELLERSGROUP', 'FRAGGER_RESELLING', 'ANTHONYBGMICHAT', 'JAATXONWER', 'ROLEXRESELLINGHUB', 'bgmipop023', 'SANKYCHATGROUP', 'Resellers_Group', 'RITESHxRESELLING', 'CLASH_OF_CLANS60', 'BGMlCHATGROUP', 'PUBGMANYA_CHAT', 'SUFIYANxRESELLER', 'QAZI_CHAT_GROUP', 'RESSELERGANG', 'RARE_BGMI_STORE_CHAT', 'KARMARESELLINGCOMMUNITY', 'OGxRESELLERSS', 'MADARAxCHAT', 'KINGRESELLER', 'VICTOR_CHATS10', 'SNAX_ESCROW', 'ffffd', 'ffffd', 'ffffd', 'ffffd'] 
@@ -43,6 +44,10 @@ max_backoff_delay = 30  # Maximum backoff delay in seconds
 # Create an input peer for the source chat
 source_chat_peer = InputPeerChannel(source_chat_id, 0) 
 
+# Create a Flask app
+app = Flask(__name__)
+
+# Define a handler for new messages (same as before)
 @client.on(events.NewMessage)
 async def handler(event):
     global last_message_id
@@ -86,6 +91,11 @@ async def handler(event):
     # Add a delay to prevent rate limiting
     time.sleep(1)
 
+# Define a route for Render to keep the bot alive
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    return "Bot is alive!"
+
 async def main():
     # Connect to the Telegram client
     await client.connect()
@@ -96,14 +106,9 @@ async def main():
     # Start the handler to listen for new messages
     client.add_event_handler(handler)
     logging.info('Listening for new messages in the source chat.')
-
-    # Run the client until the user stops it
-    while True:
-        try:
-            await client.run_until_disconnected()
-        except KeyboardInterrupt:
-            logging.info("Exiting.")
-            break
+    
+    # Run the Flask app
+    app.run(host='0.0.0.0', port=os.getenv('PORT', 5000)) # Use the port Render provides
 
 if __name__ == '__main__':
     try:
