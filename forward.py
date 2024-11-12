@@ -1,35 +1,27 @@
 from telethon import TelegramClient, events, Button
 from telethon.tl.functions.messages import GetDialogsRequest
 from telethon.tl.types import InputPeerEmpty, InputPeerChannel, InputPeerUser, PeerChannel, InputPeerChat, InputPeerUser
-from telethon.errors.rpcerrorlist import PeerFloodError, UserPrivacyRestrictedError, MessageIdInvalidError, UserBannedInChannelError
+from telethon.errors.rpcerrorlist import PeerFloodError, UserPrivacyRestrictedError
 import os
 import sys
 import csv
 import traceback
 import time
-import logging
-from flask import Flask, request
+import asyncio
 
-# Telegram API credentials (your personal account's details)
-api_id = 27353904  # Replace with your API ID
-api_hash = '99b31ff29dc195f52e7bb6b526b2e4ca'  # Replace with your API hash
-phone = '+919796487958'  # Replace with your phone number
+# Telegram API credentials
+api_id = '27353904'
+api_hash = '99b31ff29dc195f52e7bb6b526b2e4ca'
+phone = '+919103804557'
 
 # Source chat ID
-source_chat_id = -1001859547091  # Replace with the ID of the source channel
+source_chat_id = -1002210572103
 
 # List of target channel usernames (you can add more usernames)
-target_channel_usernames = ['gyyfj7', 'CHAT_KING01', 'RESELLER_COMMUNITY2', 'dsstorechatgroup', 'bgmi_dva', 'flexopresellinghub', 'BGMIRESELLERSCOMMUNITY', 'rudraxchats', 'BGMI_Official_Chat_Group', 'BGMIRESELLERSGROUP', 'FRAGGER_RESELLING', 'ANTHONYBGMICHAT', 'JAATXONWER', 'ROLEXRESELLINGHUB', 'bgmipop023', 'SANKYCHATGROUP', 'Resellers_Group', 'RITESHxRESELLING', 'CLASH_OF_CLANS60', 'BGMlCHATGROUP', 'PUBGMANYA_CHAT', 'SUFIYANxRESELLER', 'QAZI_CHAT_GROUP', 'RESSELERGANG', 'RARE_BGMI_STORE_CHAT', 'KARMARESELLINGCOMMUNITY', 'OGxRESELLERSS', 'MADARAxCHAT', 'KINGRESELLER', 'VICTOR_CHATS10', 'SNAX_ESCROW', 'ffffd', 'ffffd', 'ffffd', 'ffffd'] 
+target_channel_usernames = ['gyyfj7'] 
 
-# Logging setup
-logging.basicConfig(filename='logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-error_logger = logging.getLogger('error_logger')
-error_logger.setLevel(logging.ERROR)
-error_handler = logging.FileHandler('error.txt')
-error_handler.setLevel(logging.ERROR)
-error_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-error_handler.setFormatter(error_formatter)
-error_logger.addHandler(error_handler)
+# Logging file
+log_file = "logs.txt"
 
 # Create a Telegram client
 client = TelegramClient('anon', api_id, api_hash)
@@ -44,10 +36,6 @@ max_backoff_delay = 30  # Maximum backoff delay in seconds
 # Create an input peer for the source chat
 source_chat_peer = InputPeerChannel(source_chat_id, 0) 
 
-# Create a Flask app
-app = Flask(__name__)
-
-# Define a handler for new messages (same as before)
 @client.on(events.NewMessage)
 async def handler(event):
     global last_message_id
@@ -68,33 +56,26 @@ async def handler(event):
                         messages=event.message,
                         from_peer=source_chat
                     )
-                    logging.info(f"Message forwarded to {target_username}")
+                    print(f"Message forwarded to {target_username}")
                     last_message_id = event.message.id  # Update last_message_id AFTER success
                     backoff_delay = 2  # Reset backoff delay on success
                 except PeerFloodError:
-                    logging.warning(f"Getting Flood Error from {target_username}. \nWaiting {backoff_delay} seconds.")
+                    print(f"Getting Flood Error from {target_username}. \nWaiting {backoff_delay} seconds.")
                     time.sleep(backoff_delay)
                     backoff_delay *= 2  # Increase backoff delay
                     if backoff_delay > max_backoff_delay:
                         backoff_delay = max_backoff_delay
                 except UserPrivacyRestrictedError:
-                    logging.info(f"The user's privacy settings do not allow you to do this. Skipping.")
-                except (MessageIdInvalidError, UserBannedInChannelError):
-                    error_logger.error(f"Error forwarding to {target_username}: {traceback.format_exc()}")
+                    print(f"The user's privacy settings do not allow you to do this. Skipping.")
                 except:
                     traceback.print_exc()
-                    error_logger.error(f'Error forwarding message to {target_username}.')
+                    print(f'Error forwarding message to {target_username}.')
         except:
             traceback.print_exc()
-            error_logger.error(f'Error getting source chat entity or forwarding message.')
+            print(f'Error getting source chat entity or forwarding message.')
 
     # Add a delay to prevent rate limiting
     time.sleep(1)
-
-# Define a route for Render to keep the bot alive
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    return "Bot is alive!"
 
 async def main():
     # Connect to the Telegram client
@@ -105,13 +86,12 @@ async def main():
 
     # Start the handler to listen for new messages
     client.add_event_handler(handler)
-    logging.info('Listening for new messages in the source chat.')
-    
-    # Run the Flask app
-    app.run(host='0.0.0.0', port=os.getenv('PORT', 5000)) # Use the port Render provides
+    print('Listening for new messages in the source chat.')
+
+    # Define a port and start the server
+    port = int(os.environ.get("PORT", 5000))  # Get port from environment (default: 5000)
+    print(f"Server started on port {port}")
+    await client.run_until_disconnected()
 
 if __name__ == '__main__':
-    try:
-        client.loop.run_until_complete(main())
-    except KeyboardInterrupt:
-        logging.info("Exiting.")
+    asyncio.run(main())
