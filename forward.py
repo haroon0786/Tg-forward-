@@ -32,8 +32,8 @@ client = TelegramClient('anon', api_id, api_hash)
 last_message_id = 0
 
 # Backoff strategy parameters
-backoff_delay = 2  # Initial backoff delay in seconds
-max_backoff_delay = 30  # Maximum backoff delay in seconds
+backoff_delay = 5  # Initial backoff delay in seconds (increased)
+max_backoff_delay = 60  # Maximum backoff delay in seconds (increased)
 
 # Create an input peer for the source chat
 source_chat_peer = InputPeerChannel(source_chat_id, 0) 
@@ -83,7 +83,7 @@ async def handler(event):
         pass  # Skip to the next message
 
     # Add a delay to prevent rate limiting
-    time.sleep(1)
+    time.sleep(2) 
 
 async def main():
     # Connect to the Telegram client
