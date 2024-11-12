@@ -7,12 +7,8 @@ import sys
 import csv
 import traceback
 import time
-from aiohttp import web
-import asyncio
-
-# Redirect stdout and stderr to os.devnull to suppress terminal output
-sys.stdout = open(os.devnull, 'w')
-sys.stderr = open(os.devnull, 'w')
+from flask import Flask
+from threading import Thread
 
 # Telegram API credentials
 api_id = '27353904'
@@ -22,7 +18,7 @@ phone = '+919103804557'
 # Source chat ID
 source_chat_id = -1002210572103
 
-# List of target channel usernames
+# List of target channel usernames (you can add more usernames)
 target_channel_usernames = ['gyyfj7'] 
 
 # Logging file
@@ -35,13 +31,16 @@ client = TelegramClient('anon', api_id, api_hash)
 last_message_id = 0
 
 # Backoff strategy parameters
-backoff_delay = 4  # Initial backoff delay in seconds
+backoff_delay = 2  # Initial backoff delay in seconds
 max_backoff_delay = 30  # Maximum backoff delay in seconds
+
+# Create an input peer for the source chat
+source_chat_peer = InputPeerChannel(source_chat_id, 0) 
 
 @client.on(events.NewMessage)
 async def handler(event):
     global last_message_id
-    if event.message.id > last_message_id and event.chat_id == source_chat_id: 
+    if event.message.id > last_message_id and event.chat_id == source_chat_peer.channel_id: 
         try:
             # Get the source chat entity
             source_chat = await client.get_entity(event.message.peer_id)
@@ -58,45 +57,60 @@ async def handler(event):
                         messages=event.message,
                         from_peer=source_chat
                     )
+                    print(f"Message forwarded to {target_username}")
                     last_message_id = event.message.id  # Update last_message_id AFTER success
-                    backoff_delay = 4  # Reset backoff delay on success
+                    backoff_delay = 2  # Reset backoff delay on success
                 except PeerFloodError:
-                    await asyncio.sleep(backoff_delay)
-                    backoff_delay *= 4  # Increase backoff delay
+                    print(f"Getting Flood Error from {target_username}. \nWaiting {backoff_delay} seconds.")
+                    time.sleep(backoff_delay)
+                    backoff_delay *= 2  # Increase backoff delay
                     if backoff_delay > max_backoff_delay:
                         backoff_delay = max_backoff_delay
                 except UserPrivacyRestrictedError:
-                    pass
+                    print(f"The user's privacy settings do not allow you to do this. Skipping.")
                 except:
                     traceback.print_exc()
+                    print(f'Error forwarding message to {target_username}.')
         except:
             traceback.print_exc()
+            print(f'Error getting source chat entity or forwarding message.')
 
     # Add a delay to prevent rate limiting
-    await asyncio.sleep(1)
+    time.sleep(1)
 
 async def main():
     # Connect to the Telegram client
     await client.connect()
-    if not await client.is_user_authorized():
+    if not await client.is_user_authorized():  # Await the result of is_user_authorized
         await client.send_code_request(phone)
-        await client.sign_in(phone, input('Enter the code: '))
+        await client.sign_in(phone, input('Enter the code: '))  # Await the result of sign_in
 
     # Start the handler to listen for new messages
     client.add_event_handler(handler)
+    print('Listening for new messages in the source chat.')
 
-    # Start the aiohttp server
-    app = web.Application()
-    app.router.add_get('/', lambda request: web.Response(text="Server is running!"))
+    # Run the client until the user stops it
+    await client.run_until_disconnected()
 
-    # Run both Telegram client and aiohttp server concurrently
-    await asyncio.gather(
-        client.run_until_disconnected(),
-        web._run_app(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-    )
+# Create a Flask app to fulfill Render's port requirement
+app = Flask(__name__)
 
-if __name__ == '__main__':
+@app.route('/')
+def home():
+    return "Telegram bot is running"
+
+# Function to run Flask in a separate thread
+def run():
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
+if __name__ == "__main__":
     try:
+        # Start Flask web server in a separate thread
+        t = Thread(target=run)
+        t.start()
+
+        # Start Telegram bot
         client.loop.run_until_complete(main())
+
     except KeyboardInterrupt:
-        pass
+        print("Exiting.")
