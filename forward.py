@@ -10,8 +10,8 @@ import time
 import asyncio
 import logging
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Configure logging (set level to WARNING to suppress INFO messages)
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Telegram API credentials
@@ -58,17 +58,18 @@ async def handler(event):
                         messages=event.message,
                         from_peer=source_chat
                     )
-                    logger.info(f"Message forwarded to {target_username}")
+                    # Only log successful forwards (INFO level)
+                    logger.info(f"Message forwarded to {target_username}") 
                     last_message_id = event.message.id  # Update last_message_id AFTER success
                     backoff_delay = 2  # Reset backoff delay on success
                 except PeerFloodError:
-                    logger.warning(f"Getting Flood Error from {target_username}. \nWaiting {backoff_delay} seconds.")
+                    logger.warning(f"Flood Error from {target_username}. Waiting {backoff_delay} seconds.")
                     time.sleep(backoff_delay)
                     backoff_delay *= 2  # Increase backoff delay
                     if backoff_delay > max_backoff_delay:
                         backoff_delay = max_backoff_delay
                 except UserPrivacyRestrictedError:
-                    logger.info(f"The user's privacy settings do not allow you to do this. Skipping.")
+                    logger.warning(f"Privacy restriction for {target_username}. Skipping.")
                 except Exception as e:
                     logger.error(f'Error forwarding message to {target_username}: {e}')
                     traceback.print_exc()
