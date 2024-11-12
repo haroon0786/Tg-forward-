@@ -1,20 +1,25 @@
 from telethon import TelegramClient, events, Button
 from telethon.tl.functions.messages import GetDialogsRequest
-from telethon.tl.types import InputPeerEmpty, InputPeerChannel, InputPeerUser, PeerChannel, InputPeerChat
+from telethon.tl.types import InputPeerEmpty, InputPeerChannel, InputPeerUser, PeerChannel, InputPeerChat, InputPeerUser
 from telethon.errors.rpcerrorlist import PeerFloodError, UserPrivacyRestrictedError
+import os
+import sys
+import csv
 import traceback
 import time
-from flask import Flask
-import threading
+from aiohttp import web
+import asyncio
 
 # Telegram API credentials
-api_id = 27353904
+api_id = '27353904'
 api_hash = '99b31ff29dc195f52e7bb6b526b2e4ca'
 phone = '+919103804557'
 
-# Source chat ID and target channels
+# Source chat ID
 source_chat_id = -1002210572103
-target_channel_usernames = ['gyyfj7']  # Add more usernames as needed
+
+# List of target channel usernames
+target_channel_usernames = ['gyyfj7'] 
 
 # Logging file
 log_file = "logs.txt"
@@ -29,16 +34,6 @@ last_message_id = 0
 backoff_delay = 2  # Initial backoff delay in seconds
 max_backoff_delay = 30  # Maximum backoff delay in seconds
 
-# Flask app for Render to keep the bot alive
-app = Flask(__name__)
-
-@app.route('/')
-def index():
-    return "Telegram Bot is Running"
-
-def run_flask():
-    app.run(host="0.0.0.0", port=5000)
-
 @client.on(events.NewMessage)
 async def handler(event):
     global last_message_id
@@ -51,7 +46,7 @@ async def handler(event):
             for target_username in target_channel_usernames:
                 try:
                     # Get the target channel entity
-                    target_channel = await client.get_input_entity(target_username.strip())
+                    target_channel = await client.get_input_entity(target_username)
 
                     # Forward the message
                     await client.forward_messages(
@@ -64,19 +59,21 @@ async def handler(event):
                     backoff_delay = 2  # Reset backoff delay on success
                 except PeerFloodError:
                     print(f"Getting Flood Error from {target_username}. \nWaiting {backoff_delay} seconds.")
-                    time.sleep(backoff_delay)
-                    backoff_delay = min(backoff_delay * 2, max_backoff_delay)
+                    await asyncio.sleep(backoff_delay)
+                    backoff_delay *= 2  # Increase backoff delay
+                    if backoff_delay > max_backoff_delay:
+                        backoff_delay = max_backoff_delay
                 except UserPrivacyRestrictedError:
                     print(f"The user's privacy settings do not allow you to do this. Skipping.")
-                except Exception as e:
+                except:
                     traceback.print_exc()
-                    print(f'Error forwarding message to {target_username}: {e}')
-        except Exception as e:
+                    print(f'Error forwarding message to {target_username}.')
+        except:
             traceback.print_exc()
-            print(f'Error getting source chat entity or forwarding message: {e}')
+            print(f'Error getting source chat entity or forwarding message.')
 
     # Add a delay to prevent rate limiting
-    time.sleep(1)
+    await asyncio.sleep(1)
 
 async def main():
     # Connect to the Telegram client
@@ -89,13 +86,19 @@ async def main():
     client.add_event_handler(handler)
     print('Listening for new messages in the source chat.')
 
-    # Run the client until the user stops it
-    await client.run_until_disconnected()
+    # Start the aiohttp server
+    app = web.Application()
+    app.router.add_get('/', lambda request: web.Response(text="Server is running!"))
 
-# Start the Telegram bot and Flask server
+    # Run both Telegram client and aiohttp server concurrently
+    await asyncio.gather(
+        client.run_until_disconnected(),
+        web._run_app(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    )
+
 if __name__ == '__main__':
     try:
-        threading.Thread(target=run_flask).start()  # Start Flask server in a separate thread
         client.loop.run_until_complete(main())
     except KeyboardInterrupt:
         print("Exiting.")
+        
