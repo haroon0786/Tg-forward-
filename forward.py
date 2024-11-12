@@ -31,7 +31,7 @@ client = TelegramClient('anon', api_id, api_hash)
 last_message_id = 0
 
 # Backoff strategy parameters
-backoff_delay = 2  # Initial backoff delay in seconds
+backoff_delay = 4  # Initial backoff delay in seconds
 max_backoff_delay = 30  # Maximum backoff delay in seconds
 
 @client.on(events.NewMessage)
@@ -56,11 +56,11 @@ async def handler(event):
                     )
                     print(f"Message forwarded to {target_username}")
                     last_message_id = event.message.id  # Update last_message_id AFTER success
-                    backoff_delay = 2  # Reset backoff delay on success
+                    backoff_delay = 4  # Reset backoff delay on success
                 except PeerFloodError:
                     print(f"Getting Flood Error from {target_username}. \nWaiting {backoff_delay} seconds.")
                     await asyncio.sleep(backoff_delay)
-                    backoff_delay *= 2  # Increase backoff delay
+                    backoff_delay *= 4  # Increase backoff delay
                     if backoff_delay > max_backoff_delay:
                         backoff_delay = max_backoff_delay
                 except UserPrivacyRestrictedError:
