@@ -1,12 +1,13 @@
 from telethon import TelegramClient, events, Button
 from telethon.tl.functions.messages import GetDialogsRequest
 from telethon.tl.types import InputPeerEmpty, InputPeerChannel, InputPeerUser, PeerChannel, InputPeerChat, InputPeerUser
-from telethon.errors.rpcerrorlist import PeerFloodError, UserPrivacyRestrictedError
+from telethon.errors.rpcerrorlist import PeerFloodError, UserPrivacyRestrictedError, MessageIdInvalidError, UserBannedInChannelError
 import os
 import sys
 import csv
 import traceback
 import time
+import logging
 
 # Telegram API credentials
 api_id = '27353904'
@@ -17,10 +18,10 @@ phone = '+919796487958'
 source_chat_id = -1001859547091
 
 # List of target channel usernames (you can add more usernames)
-target_channel_usernames = ['gyyfj7', 'CHAT_KING01', 'RESELLER_COMMUNITY2', 'dsstorechatgroup', 'bgmi_dva', 'flexopresellinghub', 'BGMIRESELLERSCOMMUNITY', 'rudraxchats', 'BGMI_Official_Chat_Group', 'BGMIRESELLERSGROUP', 'FRAGGER_RESELLING', 'ANTHONYBGMICHAT', 'JAATXONWER', 'ROLEXRESELLINGHUB', 'bgmipop023', 'SANKYCHATGROUP', 'Resellers_Group', 'RITESHxRESELLING', 'CLASH_OF_CLANS60', 'BGMlCHATGROUP', 'PUBGMANYA_CHAT', 'SUFIYANxRESELLER', 'QAZI_CHAT_GROUP', 'RESSELERGANG', 'RARE_BGMI_STORE_CHAT', 'KARMARESELLINGCOMMUNITY', 'OGxRESELLERSS', 'MADARAxCHAT', 'KINGRESELLER', 'ffffd', 'ffffd', 'ffffd', 'ffffd', 'ffffd', 'ffffd'] 
+target_channel_usernames = ['gyyfj7', 'CHAT_KING01', 'RESELLER_COMMUNITY2', 'dsstorechatgroup', 'bgmi_dva', 'flexopresellinghub', 'BGMIRESELLERSCOMMUNITY', 'rudraxchats', 'BGMI_Official_Chat_Group', 'BGMIRESELLERSGROUP', 'FRAGGER_RESELLING', 'ANTHONYBGMICHAT', 'JAATXONWER', 'ROLEXRESELLINGHUB', 'bgmipop023', 'SANKYCHATGROUP', 'Resellers_Group', 'RITESHxRESELLING', 'CLASH_OF_CLANS60', 'BGMlCHATGROUP', 'PUBGMANYA_CHAT', 'SUFIYANxRESELLER', 'QAZI_CHAT_GROUP', 'RESSELERGANG', 'RARE_BGMI_STORE_CHAT', 'KARMARESELLINGCOMMUNITY', 'OGxRESELLERSS', 'MADARAxCHAT', 'KINGRESELLER', 'VICTOR_CHATS10', 'SNAX_ESCROW', 'ffffd', 'ffffd', 'ffffd', 'ffffd'] 
 
-# Logging file
-log_file = "logs.txt"
+# Logging setup
+logging.basicConfig(filename='logs.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Create a Telegram client
 client = TelegramClient('anon', api_id, api_hash)
@@ -55,23 +56,25 @@ async def handler(event):
                         messages=event.message,
                         from_peer=source_chat
                     )
-                    print(f"Message forwarded to {target_username}")
+                    logging.info(f"Message forwarded to {target_username}")
                     last_message_id = event.message.id  # Update last_message_id AFTER success
                     backoff_delay = 2  # Reset backoff delay on success
                 except PeerFloodError:
-                    print(f"Getting Flood Error from {target_username}. \nWaiting {backoff_delay} seconds.")
+                    logging.warning(f"Getting Flood Error from {target_username}. \nWaiting {backoff_delay} seconds.")
                     time.sleep(backoff_delay)
                     backoff_delay *= 2  # Increase backoff delay
                     if backoff_delay > max_backoff_delay:
                         backoff_delay = max_backoff_delay
                 except UserPrivacyRestrictedError:
-                    print(f"The user's privacy settings do not allow you to do this. Skipping.")
+                    logging.info(f"The user's privacy settings do not allow you to do this. Skipping.")
+                except (MessageIdInvalidError, UserBannedInChannelError):
+                    logging.error(f"Error forwarding to {target_username}: {traceback.format_exc()}")
                 except:
                     traceback.print_exc()
-                    print(f'Error forwarding message to {target_username}.')
+                    logging.error(f'Error forwarding message to {target_username}.')
         except:
             traceback.print_exc()
-            print(f'Error getting source chat entity or forwarding message.')
+            logging.error(f'Error getting source chat entity or forwarding message.')
 
     # Add a delay to prevent rate limiting
     time.sleep(1)
@@ -85,13 +88,18 @@ async def main():
 
     # Start the handler to listen for new messages
     client.add_event_handler(handler)
-    print('Listening for new messages in the source chat.')
+    logging.info('Listening for new messages in the source chat.')
 
     # Run the client until the user stops it
-    await client.run_until_disconnected()
+    while True:
+        try:
+            await client.run_until_disconnected()
+        except KeyboardInterrupt:
+            logging.info("Exiting.")
+            break
 
 if __name__ == '__main__':
     try:
         client.loop.run_until_complete(main())
     except KeyboardInterrupt:
-        print("Exiting.")
+        logging.info("Exiting.")
