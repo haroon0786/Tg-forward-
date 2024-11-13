@@ -7,19 +7,17 @@ import sys
 import csv
 import traceback
 import time
-from flask import Flask
-from threading import Thread
 
 # Telegram API credentials
 api_id = '27353904'
 api_hash = '99b31ff29dc195f52e7bb6b526b2e4ca'
-phone = '+919103804557'
+phone = '+919796487958'
 
 # Source chat ID
-source_chat_id = -1002210572103
+source_chat_id = -1001859547091
 
 # List of target channel usernames (you can add more usernames)
-target_channel_usernames = ['gyyfj7'] 
+target_channel_usernames = ['gyyfj7', 'CHAT_KING01', 'RESELLER_COMMUNITY2', 'dsstorechatgroup', 'bgmi_dva', 'flexopresellinghub', 'BGMIRESELLERSCOMMUNITY', 'rudraxchats', 'BGMI_Official_Chat_Group', 'BGMIRESELLERSGROUP', 'FRAGGER_RESELLING', 'ANTHONYBGMICHAT', 'JAATXONWER', 'ROLEXRESELLINGHUB', 'bgmipop023', 'SANKYCHATGROUP', 'Resellers_Group', 'RITESHxRESELLING', 'CLASH_OF_CLANS60', 'BGMlCHATGROUP', 'PUBGMANYA_CHAT', 'SUFIYANxRESELLER', 'QAZI_CHAT_GROUP', 'RESSELERGANG', 'RARE_BGMI_STORE_CHAT', 'KARMARESELLINGCOMMUNITY', 'OGxRESELLERSS', 'MADARAxCHAT', 'KINGRESELLER', 'ffffd', 'ffffd', 'ffffd', 'ffffd', 'ffffd', 'ffffd'] 
 
 # Logging file
 log_file = "logs.txt"
@@ -83,7 +81,7 @@ async def main():
     await client.connect()
     if not await client.is_user_authorized():  # Await the result of is_user_authorized
         await client.send_code_request(phone)
-        await client.sign_in(phone, input('Enter the code: '))  # Await the result of sign_in
+        await client.sign_in(phone, input('Enter the code: ')) # Await the result of sign_in
 
     # Start the handler to listen for new messages
     client.add_event_handler(handler)
@@ -92,25 +90,8 @@ async def main():
     # Run the client until the user stops it
     await client.run_until_disconnected()
 
-# Create a Flask app to fulfill Render's port requirement
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Telegram bot is running"
-
-# Function to run Flask in a separate thread
-def run():
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     try:
-        # Start Flask web server in a separate thread
-        t = Thread(target=run)
-        t.start()
-
-        # Start Telegram bot
         client.loop.run_until_complete(main())
-
     except KeyboardInterrupt:
         print("Exiting.")
