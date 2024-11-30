@@ -1,0 +1,6 @@
+services:
+  - name: telegram-forwarder
+    type: worker
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python forward.py"
