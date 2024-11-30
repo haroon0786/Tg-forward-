@@ -1,4 +1,7 @@
+import time
 from telethon import TelegramClient, events
+from flask import Flask
+from threading import Thread
 
 # Telegram API credentials
 api_id = '27353904'  # Replace with your API ID
@@ -8,7 +11,7 @@ api_hash = '99b31ff29dc195f52e7bb6b526b2e4ca'  # Replace with your API Hash
 source_chat = -1001859547091  # Replace with your source group ID
 
 # List of destination groups/chats - Duplicates removed
-destination_chats = set([
+destination_chats = [
     'gyyfj7',
     'destination_group_2',
     '@CHAT_KING01',
@@ -46,11 +49,20 @@ destination_chats = set([
     '@WAR_RESELLER',
     '@ScammerHellGroup',
     '@XeonChatGroup'
-])
-destination_chats = list(destination_chats)  # Convert back to list
+]
 
 # Create the Telegram client
 client = TelegramClient('session_name', api_id, api_hash)
+
+# Flask web server to keep Render happy
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running"
+
+def run_flask():
+    app.run(host='0.0.0.0', port=8080)
 
 @client.on(events.NewMessage(chats=source_chat))
 async def forward_message(event):
@@ -62,7 +74,21 @@ async def forward_message(event):
         except Exception as e:
             print(f"Failed to forward message to {chat}: {e}")
 
-# Start the client
-with client:
-    print("Listening for new messages...")
-    client.run_until_disconnected()
+# Ensure the client runs continuously
+def run_telethon():
+    while True:
+        try:
+            with client:
+                print("Listening for new messages...")
+                client.run_until_disconnected()
+        except Exception as e:
+            print(f"Error: {e}")
+            time.sleep(10)  # Wait before trying again
+
+if __name__ == "__main__":
+    # Run Flask web server in a separate thread
+    flask_thread = Thread(target=run_flask)
+    flask_thread.start()
+
+    # Run Telethon client
+    run_telethon()
