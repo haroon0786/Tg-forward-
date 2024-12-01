@@ -9,11 +9,11 @@ api_hash = '99b31ff29dc195f52e7bb6b526b2e4ca'  # Replace with your API Hash
 
 # List of source channel/group IDs
 source_chats = [
-    -1001859547091,  # Source chat 1
-    -1002238563306   # Source chat 2
+    -1001859547091,  # Replace with your first source group ID
+    -1002238563306   # Replace with your second source group ID
 ]
 
-# List of destination groups/chats - Usernames. Use with caution; usernames can change.
+# List of destination groups/chats - Usernames
 destination_chats = [
     "@JAATXONWER",
     "@bgmi_dva",
@@ -101,7 +101,7 @@ destination_chats = [
 # Create the Telegram client
 client = TelegramClient('session_name', api_id, api_hash)
 
-# Flask web server to keep the bot running
+# Flask web server to keep Render happy
 app = Flask(__name__)
 
 @app.route('/')
